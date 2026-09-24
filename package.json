@@ -1,0 +1,33 @@
+{
+  "name": "anz-bank-automation-poc",
+  "version": "1.0.0",
+  "private": true,
+  "description": "ANZ-aligned Playwright, Cucumber and TypeScript automation framework for ParaBank",
+  "scripts": {
+    "test": "npm run test:cucumber",
+    "test:cucumber": "cucumber-js --config cucumber.js",
+    "test:smoke": "cucumber-js --config cucumber.js --tags '@smoke'",
+    "test:headed": "cross-env HEADED=true cucumber-js --config cucumber.js",
+    "test:debug": "cross-env DEBUG=pw:api cucumber-js --config cucumber.js",
+    "report": "node scripts/generate-report.js",
+    "typecheck": "tsc --noEmit",
+    "format": "prettier --write .",
+    "lint": "eslint . --ext .ts",
+    "install:browsers": "playwright install --with-deps"
+  },
+  "devDependencies": {
+    "@cucumber/cucumber": "^11.3.0",
+    "@playwright/test": "^1.55.0",
+    "@types/node": "^22.10.0",
+    "cross-env": "^7.0.3",
+    "cucumber-html-reporter": "^7.2.0",
+    "eslint": "^9.17.0",
+    "prettier": "^3.4.2",
+    "ts-node": "^10.9.2",
+    "typescript": "^5.7.2",
+    "typescript-eslint": "^8.18.0"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.7"
+  }
+}

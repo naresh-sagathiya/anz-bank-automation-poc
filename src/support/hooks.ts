@@ -1,0 +1,99 @@
+/** Cucumber hooks that create, reset, and close the browser lifecycle for web scenarios. */
+import { After, Before } from '@cucumber/cucumber';
+import { chromium, firefox, webkit, request } from '@playwright/test';
+import { CustomWorld } from '../support/world';
+import { TestUtils } from './web-test-utils';
+import { LoginPage } from '../pages/login.page';
+import { config } from './config';
+
+/** Starts the browser, creates the scenario context, and prepares the initial page. */
+Before({ timeout: 30_000 }, async function (this: CustomWorld) {
+  // Launch browser
+  const browserName = process.env.BROWSER?.toLowerCase();
+  const isHeadless =
+    process.env.CI === 'true' || process.env.GITHUB_ACTIONS === 'true';
+
+  console.log(`Launching ${browserName} browser (headless: ${isHeadless})`);
+
+  if (browserName === 'chromium') {
+    this.browser = await chromium.launch({ headless: isHeadless });
+  } else if (browserName === 'webkit') {
+    this.browser = await webkit.launch({ headless: isHeadless });
+  } else if (browserName === 'firefox') {
+    this.browser = await firefox.launch({ headless: isHeadless });
+  } else {
+    throw new Error(
+      `Unsupported browser: ${browserName}. BROWSER env var is: ${process.env.BROWSER}`
+    );
+  }
+  // Create browser context
+  this.context = await this.browser.newContext();
+  this.api = await request.newContext({
+    baseURL: config.baseUrl.replace(/index\.htm$/i, '')
+  });
+
+  // Create page
+  this.page = await this.context.newPage();
+
+  await this.initialize();
+
+  await this.page.goto(config.baseUrl);
+});
+
+/** Captures failure evidence, logs out, and closes scenario resources. */
+After(async function (this: CustomWorld, scenario) {
+  // Take a screenshot only when the scenario fails.
+  if (
+    scenario.result?.status === 'FAILED' &&
+    this.page &&
+    !this.page.isClosed()
+  ) {
+    try {
+      const scenarioName = scenario.pickle.name;
+      const screenshot = await TestUtils.screenshot(this.page, scenarioName);
+
+      await this.attach(screenshot, 'image/png');
+      console.log(
+        `Failure screenshot saved: ${TestUtils.screenshotPath(scenarioName)}`
+      );
+    } catch (error) {
+      // Screenshot failure should not hide the original test failure.
+      console.log('Could not capture failure screenshot:', error);
+    }
+  }
+
+  // Logout after every scenario.
+  if (this.page && !this.page.isClosed()) {
+    try {
+      await new LoginPage(this.page).logout();
+    } catch (error) {
+      console.log('Logout skipped or failed.', error);
+    }
+  }
+
+  if (this.secondaryPage && !this.secondaryPage.isClosed()) {
+    try {
+      await new LoginPage(this.secondaryPage).logout();
+    } catch (error) {
+      console.log('Secondary logout skipped or failed.', error);
+    }
+  }
+
+  if (this.secondaryContext) {
+    await this.secondaryContext.close();
+  }
+
+  if (this.api) {
+    await this.api.dispose();
+  }
+
+  // Close browser context.
+  if (this.context) {
+    await this.context.close();
+  }
+
+  // Close browser.
+  if (this.browser) {
+    await this.browser.close();
+  }
+});

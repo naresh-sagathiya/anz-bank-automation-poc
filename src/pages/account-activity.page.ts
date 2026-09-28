@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 import { AccountActivityLocators } from '../locators/account-activity.locators';
 
@@ -49,6 +49,15 @@ export class AccountActivityPage extends BasePage {
   }
 
   async getTransactionEntries(): Promise<ActivityEntry[]> {
+    await expect
+      .poll(
+        async () =>
+          (await this.locators.transactionRows.count()) > 0 ||
+          (await this.locators.noResultsMessage.isVisible()),
+        { timeout: 15_000 }
+      )
+      .toBeTruthy();
+
     return this.locators.transactionRows.evaluateAll((rows) =>
       rows.map((row) => {
         const cells = Array.from(row.querySelectorAll('td')).map((cell) =>

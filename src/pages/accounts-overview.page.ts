@@ -1,4 +1,4 @@
-import { Page } from '@playwright/test';
+import { expect, Page } from '@playwright/test';
 import { BasePage } from './base.page';
 import { AccountsOverviewLocators } from '../locators/accounts-overview.locators';
 
@@ -24,10 +24,11 @@ export class AccountsOverviewPage extends BasePage {
   }
 
   async getAccountIds(): Promise<string[]> {
-    return this.locators.defaultAccountRow
-      .locator('xpath=ancestor::table/tbody/tr')
-      .locator('td:first-child a')
-      .allTextContents();
+    return this.page.locator('#accountTable tbody tr').locator('td:first-child a').evaluateAll((links) =>
+      links
+        .map((link) => (link as HTMLAnchorElement).textContent?.trim())
+        .filter((id): id is string => Boolean(id))
+    );
   }
 
   async getAccountBalance(accountId: string): Promise<string> {
@@ -44,5 +45,8 @@ export class AccountsOverviewPage extends BasePage {
   async openAccountDetails(accountId: string): Promise<void> {
     await this.page.getByRole('link', { name: accountId, exact: true }).click();
     await this.verifyUrl(/activity\.htm/, 15_000);
+    await expect(this.page.locator('#accountId')).toHaveText(accountId, {
+      timeout: 15_000
+    });
   }
 }

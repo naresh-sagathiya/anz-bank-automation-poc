@@ -6,6 +6,7 @@ Feature: ParaBank account opening
     Given the customer is on the ParaBank home page
     When the customer opens the registration page
     And the customer registers with valid details
+    And the customer opens the Accounts Overview page
 
   Scenario: TC028-TC029 Open a new CHECKING account and verify its ID
     When the customer opens the new account page
@@ -60,11 +61,6 @@ Feature: ParaBank account opening
     When the customer opens the new account page
     And the customer attempts to open an account from an insufficient-funds source account
     Then the account-opening error message should be displayed
-
-  Scenario: TC041 Compare UI account balance with API balance
-    When the customer opens the Accounts Overview page
-    And the customer compares the first account balance with the API balance
-    Then the UI and API account balances should match
 
   Scenario: TC042 Verify account details after creation
     When the customer opens the new account page

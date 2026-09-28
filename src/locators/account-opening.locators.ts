@@ -15,9 +15,7 @@ export class AccountOpeningLocators {
     });
     this.accountType = page.locator('#type');
     this.fromAccount = page.locator('#fromAccountId');
-    this.openAccountButton = page.locator(
-      'input[value="Open New Account"]:visible'
-    );
+    this.openAccountButton = page.getByRole('button', { name: 'Open New Account' })
     this.accountOpenedMessage = page.locator(
       'h1.title:visible',
       { hasText: 'Account Opened!' }

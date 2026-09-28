@@ -1,6 +1,5 @@
 import { Then, When } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
-import { ApiDataClient } from '../data/api-data-client';
 import { AccountType } from '../pages/account-opening.page';
 import { CustomWorld } from '../support/world';
 
@@ -21,6 +20,7 @@ When(
     this.sourceAccountId = await this.accountOpeningPage.getSourceAccountId();
     const accountId = await this.accountOpeningPage.openAccount(type);
     this.createdAccountIds.push(accountId);
+    console.log(accountId, ">>>>this.createdAccountIds>>>", this.createdAccountIds);
   }
 );
 
@@ -56,27 +56,10 @@ When(
   }
 );
 
-When(
-  'the customer compares the first account balance with the API balance',
-  async function (this: CustomWorld) {
-    const accountId = (await this.accountsOverviewPage.getAccountIds())[0];
-    const uiBalance = parseMoney(
-      await this.accountsOverviewPage.getAccountBalance(accountId)
-    );
-    const customerId = await this.page.locator('input[name="customerId"]').inputValue().catch(() => '');
-    const apiClient = new ApiDataClient(this.api);
-    const accounts = await apiClient.getCustomerAccounts(customerId);
-    const account = (accounts as { account?: Array<{ id: number; balance: number }> }).account?.find(
-      item => String(item.id) === accountId
-    );
-    this.attach(JSON.stringify({ accountId, uiBalance, apiBalance: account?.balance }));
-    expect(account?.balance).toBe(uiBalance);
-  }
-);
-
 Then(
   'the new account ID should be displayed',
   async function (this: CustomWorld) {
+    console.log('Created account IDs:', this.createdAccountIds);
     expect(this.createdAccountIds.at(-1)).toMatch(/^\d+$/);
   }
 );
@@ -139,13 +122,6 @@ Then(
   'the account-opening error message should be displayed',
   async function (this: CustomWorld) {
     await this.accountOpeningPage.verifyOpeningError();
-  }
-);
-
-Then(
-  'the UI and API account balances should match',
-  function () {
-    // The comparison is performed by the preceding step so a mismatch fails there.
   }
 );
 

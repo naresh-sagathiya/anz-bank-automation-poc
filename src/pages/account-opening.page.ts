@@ -55,7 +55,16 @@ export class AccountOpeningPage extends BasePage {
   }
 
   async getSourceAccountId(): Promise<string> {
-    const selectedAccountIds = await this.locators.fromAccount.selectOption({ index: 0 });
+    const firstAccountOption = this.locators.fromAccount
+      .locator('option[value]:not([value=""])')
+      .first();
+    const accountId = await firstAccountOption.getAttribute('value');
+    if (!accountId) {
+      throw new Error('No source account is available for account opening');
+    }
+    const selectedAccountIds = await this.locators.fromAccount.selectOption({
+      value: accountId
+    });
     return selectedAccountIds[0] ?? '';
   }
 

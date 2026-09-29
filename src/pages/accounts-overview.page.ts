@@ -13,6 +13,9 @@ export class AccountsOverviewPage extends BasePage {
   async open(): Promise<void> {
     await this.click(this.locators.accountsOverviewLink);
     await this.verifyUrl(/overview\.htm/, 15_000);
+    await expect(this.locators.defaultAccountRow).toBeVisible({
+      timeout: 15_000
+    });
   }
 
   async verifyDefaultAccountCreated(): Promise<void> {
@@ -39,7 +42,15 @@ export class AccountsOverviewPage extends BasePage {
   }
 
   async getTotalBalance(): Promise<string> {
-    return this.getText(this.page.locator('#accountTable tfoot td').last());
+    const totalRowText = await this.page
+      .locator('#accountTable tr')
+      .filter({ hasText: 'Total' })
+      .innerText();
+    const total = totalRowText.match(/\$\s?[\d,]+(?:\.\d{2})?/);
+    if (!total) {
+      throw new Error('Accounts Overview total balance was not displayed');
+    }
+    return total[0];
   }
 
   async openAccountDetails(accountId: string): Promise<void> {

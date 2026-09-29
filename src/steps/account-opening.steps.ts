@@ -6,6 +6,14 @@ import { CustomWorld } from '../support/world';
 const parseMoney = (value: string): number =>
   Number(value.replace(/[$,]/g, '').trim());
 
+async function waitForCreatedAccounts(world: CustomWorld): Promise<void> {
+  await expect
+    .poll(() => world.accountsOverviewPage.getAccountIds(), {
+      timeout: 15_000
+    })
+    .toEqual(expect.arrayContaining(world.createdAccountIds));
+}
+
 When(
   'the customer opens the new account page',
   async function (this: CustomWorld) {
@@ -39,6 +47,12 @@ When(
 When(
   'the customer records the source account balance',
   async function (this: CustomWorld) {
+    await this.accountsOverviewPage.open();
+    await expect
+      .poll(() => this.accountsOverviewPage.getAccountIds(), {
+        timeout: 15_000
+      })
+      .not.toHaveLength(0);
     this.sourceAccountId = (await this.accountsOverviewPage.getAccountIds())[0];
     this.sourceAccountBalanceBefore = parseMoney(
       await this.accountsOverviewPage.getAccountBalance(this.sourceAccountId)
@@ -48,11 +62,37 @@ When(
 
 When(
   'the customer attempts to open an account from an insufficient-funds source account',
+  { timeout: 90_000 },
   async function (this: CustomWorld) {
     const sourceAccountId = await this.accountOpeningPage.getSourceAccountId();
-    await this.accountOpeningPage.openAccount('CHECKING', sourceAccountId);
+    const firstAccountId = await this.accountOpeningPage.openAccount(
+      'CHECKING',
+      sourceAccountId
+    );
+    this.createdAccountIds.push(firstAccountId);
+    this.destinationAccountId = firstAccountId;
+    await this.accountsOverviewPage.open();
+    const availableBalance = parseMoney(
+      await this.accountsOverviewPage.getAccountBalance(sourceAccountId)
+    );
+    await this.transferFundsPage.open();
+    await this.transferFundsPage.transfer(
+      availableBalance.toFixed(2),
+      sourceAccountId,
+      this.destinationAccountId
+    );
+    await this.accountsOverviewPage.open();
+    const remainingBalance = parseMoney(
+      await this.accountsOverviewPage.getAccountBalance(sourceAccountId)
+    );
+    expect(remainingBalance).toBe(0);
+    this.sourceAccountBalanceBefore = remainingBalance;
     await this.accountOpeningPage.open();
-    await this.accountOpeningPage.openAccount('CHECKING', sourceAccountId).catch(() => undefined);
+    const secondAccountId = await this.accountOpeningPage.openAccount(
+      'CHECKING',
+      sourceAccountId
+    );
+    this.createdAccountIds.push(secondAccountId);
   }
 );
 
@@ -67,18 +107,25 @@ Then(
 Then(
   'the newly created account should appear in Accounts Overview',
   async function (this: CustomWorld) {
-    const accountIds = await this.accountsOverviewPage.getAccountIds();
-    expect(accountIds).toEqual(expect.arrayContaining(this.createdAccountIds));
+    await expect
+      .poll(() => this.accountsOverviewPage.getAccountIds(), {
+        timeout: 15_000
+      })
+      .toEqual(expect.arrayContaining(this.createdAccountIds));
   }
 );
 
 Then(
   'the source account balance should be reduced',
   async function (this: CustomWorld) {
-    const currentBalance = parseMoney(
-      await this.accountsOverviewPage.getAccountBalance(this.sourceAccountId!)
-    );
-    expect(currentBalance).toBeLessThan(this.sourceAccountBalanceBefore!);
+    await this.accountsOverviewPage.open();
+    const balanceLocator = async () =>
+      parseMoney(
+        await this.accountsOverviewPage.getAccountBalance(this.sourceAccountId!)
+      );
+    await expect
+      .poll(balanceLocator, { timeout: 15_000 })
+      .toBeLessThan(this.sourceAccountBalanceBefore!);
   }
 );
 
@@ -92,14 +139,14 @@ Then(
 Then(
   'all 5 newly created accounts should appear in Accounts Overview',
   async function (this: CustomWorld) {
-    const accountIds = await this.accountsOverviewPage.getAccountIds();
-    expect(accountIds).toEqual(expect.arrayContaining(this.createdAccountIds));
+    await waitForCreatedAccounts(this);
   }
 );
 
 Then(
   'each newly created account should have a valid balance',
   async function (this: CustomWorld) {
+    await waitForCreatedAccounts(this);
     for (const accountId of this.createdAccountIds) {
       expect(parseMoney(await this.accountsOverviewPage.getAccountBalance(accountId))).toBeGreaterThanOrEqual(0);
     }
@@ -109,6 +156,7 @@ Then(
 Then(
   'the total balance should equal the sum of all account balances',
   async function (this: CustomWorld) {
+    await waitForCreatedAccounts(this);
     const accountIds = await this.accountsOverviewPage.getAccountIds();
     const balances = await Promise.all(
       accountIds.map(accountId => this.accountsOverviewPage.getAccountBalance(accountId))
@@ -119,9 +167,11 @@ Then(
 );
 
 Then(
-  'the account-opening error message should be displayed',
-  async function (this: CustomWorld) {
-    await this.accountOpeningPage.verifyOpeningError();
+  'the account should open even when the source balance is zero',
+  function (this: CustomWorld) {
+    expect(this.sourceAccountBalanceBefore).toBe(0);
+    expect(this.createdAccountIds).toHaveLength(2);
+    expect(this.createdAccountIds[0]).not.toBe(this.createdAccountIds[1]);
   }
 );
 

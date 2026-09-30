@@ -18,20 +18,40 @@ export class LoanPage extends BasePage {
   async apply(
     amount: string,
     downPayment: string,
-    sourceAccountId: string
+    sourceAccountId?: string
   ): Promise<void> {
     await this.fill(this.locators.amount, amount);
     await this.fill(this.locators.downPayment, downPayment);
-    await this.selectOption(this.locators.fromAccount, sourceAccountId);
+    const accountId = sourceAccountId || (await this.getSourceAccountId());
+    await this.selectOption(this.locators.fromAccount, accountId);
     await this.click(this.locators.applyButton);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForLoadState('networkidle');
+  }
+
+  async getSourceAccountId(): Promise<string> {
+    const accountId = await this.locators.fromAccount.inputValue();
+    if (accountId) {
+      return accountId;
+    }
+
+    const firstAccount = this.locators.fromAccount.locator(
+      'option[value]:not([value=""])'
+    );
+    const fallbackAccountId = await firstAccount.first().getAttribute('value');
+    if (!fallbackAccountId) {
+      throw new Error('No source account is available for the loan request.');
+    }
+    return fallbackAccountId;
   }
 
   async getResponse(): Promise<string> {
-    return ((await this.page.locator('body').textContent()) ?? '').trim();
+    return (await this.page.locator('#rightPanel').innerText()).trim();
   }
 
   async getLoanAccountId(): Promise<string> {
+    if (!(await this.locators.loanAccountId.isVisible())) {
+      return '';
+    }
     return this.getText(this.locators.loanAccountId);
   }
 }

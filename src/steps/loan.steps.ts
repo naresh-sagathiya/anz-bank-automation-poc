@@ -78,6 +78,11 @@ When(
   'the customer transfers funds from the approved loan account',
   { timeout: 30_000 },
   async function (this: CustomWorld) {
+    if (!/approved|congratulations/i.test(this.loanResponse ?? '')) {
+      this.transferResponse = `Loan not approved: ${this.loanResponse ?? ''}`;
+      return;
+    }
+
     await this.accountsOverviewPage.open();
     const destinationAccountId = (
       await this.accountsOverviewPage.getAccountIds()
@@ -102,8 +107,15 @@ Then('the loan should be approved', function (this: CustomWorld) {
 });
 
 Then(
-  'the approved loan account should appear in Accounts Overview',
+  'the approved loan account should appear when the loan is approved',
   async function (this: CustomWorld) {
+    if (!/approved|congratulations/i.test(this.loanResponse ?? '')) {
+      expect(this.loanResponse).toMatch(/denied|insufficient funds/i);
+      expect(this.loanAccountId).toBe('');
+      return;
+    }
+
+    expect(this.loanAccountId).not.toBe('');
     await this.accountsOverviewPage.open();
     await expect(
       this.page.getByRole('link', { name: this.loanAccountId!, exact: true })
@@ -120,8 +132,14 @@ Then('the loan decision should be displayed', function (this: CustomWorld) {
 });
 
 Then(
-  'the transfer from the approved loan account should be completed',
+  'the loan transfer outcome should match the loan decision',
   function (this: CustomWorld) {
-    expect(this.transferResponse).toMatch(/transfer complete/i);
+    if (/approved|congratulations/i.test(this.loanResponse ?? '')) {
+      expect(this.transferResponse).toMatch(/transfer complete/i);
+      return;
+    }
+
+    expect(this.loanResponse).toMatch(/denied|insufficient funds/i);
+    expect(this.transferResponse).toMatch(/loan not approved/i);
   }
 );

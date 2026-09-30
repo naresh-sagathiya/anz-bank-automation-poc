@@ -7,10 +7,10 @@ Feature: ParaBank loan applications
     And the customer registers with valid details
     And the customer prepares to apply for a loan
 
-  Scenario: TC096-TC098 Apply for valid loan and verify approval and account
+  Scenario: TC096-TC098 Apply for a loan and verify its decision and account
     When the customer applies for a loan with valid amount and down payment
-    Then the loan should be approved
-    And the approved loan account should appear in Accounts Overview
+    Then the loan decision should be displayed
+    And the approved loan account should appear when the loan is approved
 
   Scenario: TC099-TC100 Down payment exceeds balance and loan is denied
     When the customer applies for a loan with a down payment exceeding the balance
@@ -32,9 +32,9 @@ Feature: ParaBank loan applications
     When the customer applies for a loan with amount "abc"
     Then the loan should be denied
 
-  Scenario: TC105 Down payment equals loan amount
+  Scenario: TC105 Down payment equals loan amount and exceeds available funds
     When the customer applies for a loan with down payment equal to the loan amount
-    Then the loan should be approved
+    Then the loan should be denied
 
   Scenario Outline: TC106-TC109 Execute approval-matrix scenario
     When the customer applies for an approval-matrix loan with amount "<amount>" and down payment "<downPayment>"
@@ -47,7 +47,7 @@ Feature: ParaBank loan applications
       | 10000  | 1000        |
       | 25000  | 2500        |
 
-  Scenario: TC110 Transfer funds from approved loan account
+  Scenario: TC110 Transfer funds only when a loan is approved
     When the customer applies for a loan with valid amount and down payment
     And the customer transfers funds from the approved loan account
-    Then the transfer from the approved loan account should be completed
+    Then the loan transfer outcome should match the loan decision

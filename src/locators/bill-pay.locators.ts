@@ -13,21 +13,23 @@ export class BillPayLocators {
   readonly amount: Locator;
   readonly fromAccount: Locator;
   readonly sendPaymentButton: Locator;
+  readonly paymentCompleteMessage: Locator;
 
   constructor(page: Page) {
     this.billPayLink = page.getByRole('link', { name: 'Bill Pay' });
-    this.payeeName = page.locator('#payeeName');
-    this.payeeAddress = page.locator('#payeeAddress');
-    this.payeeCity = page.locator('#payeeCity');
-    this.payeeState = page.locator('#payeeState');
-    this.payeeZipCode = page.locator('#payeeZipCode');
-    this.payeePhone = page.locator('#payeePhone');
-    this.payeeAccount = page.locator('#payeeAccount');
-    this.verifyAccount = page.locator('#verifyAccount');
-    this.amount = page.locator('#amount');
-    this.fromAccount = page.locator('#fromAccountId');
+    this.payeeName = page.locator('input[name="payee.name"]');
+    this.payeeAddress = page.locator('input[name="payee.address.street"]');
+    this.payeeCity = page.locator('input[name="payee.address.city"]');
+    this.payeeState = page.locator('input[name="payee.address.state"]');
+    this.payeeZipCode = page.locator('input[name="payee.address.zipCode"]');
+    this.payeePhone = page.locator('input[name="payee.phoneNumber"]');
+    this.payeeAccount = page.locator('input[name="payee.accountNumber"]');
+    this.verifyAccount = page.locator('input[name="verifyAccount"]');
+    this.amount = page.locator('input[name="amount"]');
+    this.fromAccount = page.locator('select[name="fromAccountId"]');
     this.sendPaymentButton = page
       .getByRole('button', { name: /send payment/i })
       .or(page.locator('input[type="submit"][value="Send Payment"]'));
+    this.paymentCompleteMessage = page.locator('#billpayResult');
   }
 }

@@ -42,10 +42,26 @@ export class BillPayPage extends BasePage {
   async submitPayment(sourceAccountId: string): Promise<void> {
     await this.selectOption(this.locators.fromAccount, sourceAccountId);
     await this.click(this.locators.sendPaymentButton);
-    await this.page.waitForLoadState('domcontentloaded');
+    await this.page.waitForLoadState('networkidle');
   }
 
   async getResponse(): Promise<string> {
     return ((await this.page.locator('body').textContent()) ?? '').trim();
+  }
+
+  async isPaymentCompleteVisible(): Promise<boolean> {
+    return this.locators.paymentCompleteMessage.isVisible();
+  }
+
+  async isPaymentFormVisible(): Promise<boolean> {
+    return this.page.locator('#billpayForm').isVisible();
+  }
+
+  async getDisplayedAmount(): Promise<string> {
+    return this.locators.amount.inputValue();
+  }
+
+  async getPaymentResultText(): Promise<string> {
+    return (await this.locators.paymentCompleteMessage.innerText()).trim();
   }
 }

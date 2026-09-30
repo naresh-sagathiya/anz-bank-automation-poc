@@ -47,6 +47,12 @@ export class CustomWorld extends World {
     credit: string;
   }> = [];
   billPayResponse?: string;
+  billPayConfirmationVisible?: boolean;
+  billPayFormVisible?: boolean;
+  billPaySubmittedAmount?: string;
+  billPayDisplayedAmount?: string;
+  billPayResultText?: string;
+  billPayCompletedPayments = 0;
   billPayAmount?: number;
   billPaySourceBalanceBefore?: number;
   billPayActivityEntries: Array<{

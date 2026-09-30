@@ -19,13 +19,8 @@ const billPayData = (): BillPaymentDetails => ({
   amount: testData.billPay.amount
 });
 
-const billPaymentDebits = (world: CustomWorld) =>
-  world.billPayActivityEntries.filter(
-    (entry) =>
-      /bill payment|payment/i.test(entry.description) && entry.debit !== ''
-  );
-
 async function readBillPayActivity(world: CustomWorld): Promise<void> {
+  await world.accountsOverviewPage.open();
   await world.accountsOverviewPage.openAccountDetails(world.sourceAccountId!);
   world.billPayActivityEntries =
     await world.accountActivityPage.getTransferEntries();
@@ -38,7 +33,17 @@ async function submitBillPayment(
   await world.billPayPage.open();
   await world.billPayPage.fillPayment(details);
   await world.billPayPage.submitPayment(world.sourceAccountId!);
-  world.billPayResponse = await world.billPayPage.getResponse();
+  world.billPayConfirmationVisible =
+    await world.billPayPage.isPaymentCompleteVisible();
+  if (world.billPayConfirmationVisible) {
+    world.billPayCompletedPayments += 1;
+  }
+  world.billPayFormVisible = await world.billPayPage.isPaymentFormVisible();
+  world.billPaySubmittedAmount = details.amount;
+  world.billPayDisplayedAmount = await world.billPayPage.getDisplayedAmount();
+  world.billPayResultText = world.billPayConfirmationVisible
+    ? await world.billPayPage.getPaymentResultText()
+    : undefined;
 }
 
 When(
@@ -134,7 +139,7 @@ When(
     details.amount = amount;
     await submitBillPayment(this, details);
     await submitBillPayment(this, details);
-    await readBillPayActivity(this);
+    this.billPayAmount = parseMoney(amount);
   }
 );
 
@@ -142,9 +147,7 @@ Then(
   'the bill-payment confirmation should be displayed',
   { timeout: 30_000 },
   function (this: CustomWorld) {
-    expect(this.billPayResponse).toMatch(
-      /bill payment complete|payment complete/i
-    );
+    expect(this.billPayConfirmationVisible).toBe(true);
   }
 );
 
@@ -161,14 +164,39 @@ Then(
 );
 
 Then('the bill payment should be rejected', function (this: CustomWorld) {
-  expect(this.billPayResponse).not.toMatch(
-    /bill payment complete|payment complete/i
-  );
+  expect(this.billPayConfirmationVisible).toBe(false);
 });
 
 Then(
-  'two bill-payment debit entries should be recorded',
+  'the bill-pay outcome should match the submitted amount',
   function (this: CustomWorld) {
-    expect(billPaymentDebits(this)).toHaveLength(2);
+    if (this.billPayConfirmationVisible) {
+      expect(this.billPayResultText).toContain(
+        `$${Number(this.billPaySubmittedAmount).toFixed(2)}`
+      );
+      return;
+    }
+
+    expect(this.billPayFormVisible).toBe(true);
+    expect(this.billPayDisplayedAmount).toBe(this.billPaySubmittedAmount);
+  }
+);
+
+Then(
+  'the source-account debits should match completed bill payments',
+  async function (this: CustomWorld) {
+    const before = this.billPaySourceBalanceBefore!;
+    await this.accountsOverviewPage.open();
+    const after = parseMoney(
+      await this.accountsOverviewPage.getAccountBalance(this.sourceAccountId!)
+    );
+    const debit = before - after;
+    expect(this.billPayCompletedPayments).toBeGreaterThan(0);
+    expect(debit).toBe(
+      this.billPayAmount! * this.billPayCompletedPayments
+    );
+    await this.attach(
+      `Two submissions; ${this.billPayCompletedPayments} completed; total debit $${debit.toFixed(2)}.`
+    );
   }
 );

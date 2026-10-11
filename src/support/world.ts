@@ -14,6 +14,7 @@ import { AccountActivityPage } from '../pages/account-activity.page';
 import { BillPayPage } from '../pages/bill-pay.page';
 import { LoanPage } from '../pages/loan.page';
 import { ApiResult, CustomerPayload } from '../data/rest-api-client';
+import { UpdateContactInfoPage } from '../pages/update-contact-info';
 
 export class CustomWorld extends World {
   browser!: Browser;
@@ -94,6 +95,7 @@ export class CustomWorld extends World {
     username: string;
     password: string;
   };
+  updateContactInfoPage!: UpdateContactInfoPage;
 
   constructor(options: IWorldOptions) {
     super(options);
@@ -108,6 +110,7 @@ export class CustomWorld extends World {
     this.accountActivityPage = new AccountActivityPage(this.page);
     this.billPayPage = new BillPayPage(this.page);
     this.loanPage = new LoanPage(this.page);
+    this.updateContactInfoPage = new UpdateContactInfoPage(this.page);
   }
 }
 

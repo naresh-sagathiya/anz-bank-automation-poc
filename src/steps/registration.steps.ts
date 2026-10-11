@@ -1,3 +1,4 @@
+import { randomInt } from 'node:crypto';
 import { When, Then } from '@cucumber/cucumber';
 import { expect } from '@playwright/test';
 import { CustomWorld } from '../support/world';
@@ -5,10 +6,21 @@ import testData from '../data/test-data.json';
 import { RegistrationDetails } from '../pages/registration.page';
 import { config } from '../support/config';
 
+function createUniqueUsername(): string {
+  const timestampDigits = Date.now().toString().slice(-4);
+  const randomLetters = Array.from({ length: 6 }, () =>
+    String.fromCharCode(97 + randomInt(26))
+  ).join('');
+
+  return `johndemo${timestampDigits}${randomLetters}`;
+}
+
+function createUniqueSsn(): string {
+  return randomInt(100_000_000, 1_000_000_000).toString();
+}
+
 function createRegistrationDetails(
-  username = `a${Date.now().toString().slice(-8)}${Math.random()
-    .toString(36)
-    .slice(2, 6)}`
+  username = createUniqueUsername()
 ): RegistrationDetails {
   const registration = testData.registration;
 
@@ -20,11 +32,45 @@ function createRegistrationDetails(
     state: registration.state,
     zipCode: registration.zipCode,
     phone: registration.phone,
-    ssn: registration.ssn,
+    ssn: createUniqueSsn(),
     username,
     password: registration.password,
     confirmPassword: registration.confirmPassword
   };
+}
+
+async function registerWithUniqueUsername(
+  world: CustomWorld,
+  details: RegistrationDetails
+): Promise<RegistrationDetails> {
+  let username = details.username;
+
+  for (let attempt = 0; attempt < 3; attempt += 1) {
+    const attemptDetails = {
+      ...details,
+      username,
+      ssn: attempt === 0 ? details.ssn : createUniqueSsn()
+    };
+
+    try {
+      await world.registrationPage.register(attemptDetails);
+      return attemptDetails;
+    } catch (error) {
+      const validationMessage = await world.registrationPage.getText(
+        world.registrationPage.locators.errorMessage
+      );
+
+      if (!/username already exists/i.test(validationMessage) || attempt === 2) {
+        throw error;
+      }
+
+      username = createUniqueUsername();
+      await world.page.reload();
+      await world.registrationPage.verifyUrl(/register\.htm/);
+    }
+  }
+
+  throw new Error('Registration failed after three unique-username attempts.');
 }
 
 const registrationFieldLocators = {
@@ -104,25 +150,25 @@ When(
 
 When(
   'the customer registers with maximum-length name values',
-  { timeout: 15_000 },
+  { timeout: 60_000 },
   async function (this: CustomWorld) {
     const details = createRegistrationDetails();
     details.firstName = 'A'.repeat(50);
     details.lastName = 'B'.repeat(50);
-    await this.registrationPage.register(details);
+    await registerWithUniqueUsername(this, details);
   }
 );
 
 When(
   'the customer registers with special-character values',
-  { timeout: 15_000 },
+  { timeout: 60_000 },
   async function (this: CustomWorld) {
     const details = createRegistrationDetails();
     details.firstName = "O'Neil & Co.";
     details.lastName = 'Test-User';
     details.address = "12/4 King's Road";
     details.city = 'St. Louis';
-    await this.registrationPage.register(details);
+    await registerWithUniqueUsername(this, details);
   }
 );
 
@@ -149,15 +195,18 @@ When(
 
 When(
   'the customer registers a duplicate username',
-  { timeout: 30_000 },
+  { timeout: 60_000 },
   async function (this: CustomWorld) {
-    const username = `${testData.registration.usernamePrefix}${Date.now()}${Math.random()
-      .toString(36)
-      .slice(2, 8)}`;
-    await this.registrationPage.register(createRegistrationDetails(username));
+    const username = createUniqueUsername();
+    const registeredDetails = await registerWithUniqueUsername(
+      this,
+      createRegistrationDetails(username)
+    );
     await this.loginPage.logout();
     await this.loginPage.openRegistration();
-    await this.registrationPage.fillRegistration(createRegistrationDetails(username));
+    await this.registrationPage.fillRegistration(
+      createRegistrationDetails(registeredDetails.username)
+    );
     await this.registrationPage.submitRegistration();
   }
 );

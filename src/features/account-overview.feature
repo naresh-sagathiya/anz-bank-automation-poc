@@ -1,7 +1,5 @@
+@account
 Feature: ParaBank Account Overview
-
-  @smoke
-  @account-overview
 
   Scenario: Verify default account and balance after registration
     

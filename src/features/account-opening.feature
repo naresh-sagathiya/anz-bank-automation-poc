@@ -1,4 +1,3 @@
-@smoke
 @account
 Feature: ParaBank account opening
 

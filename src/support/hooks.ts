@@ -1,13 +1,29 @@
 /** Cucumber hooks that create, reset, and close the browser lifecycle for web scenarios. */
-import { After, Before } from '@cucumber/cucumber';
+import { After, AfterAll, Before, BeforeAll } from '@cucumber/cucumber';
 import { chromium, firefox, webkit, request } from '@playwright/test';
 import { CustomWorld } from '../support/world';
 import { TestUtils } from './web-test-utils';
 import { LoginPage } from '../pages/login.page';
 import { config } from './config';
+import { startLocalRestServer, stopLocalRestServer } from './local-rest-server';
+
+let localRestApiUrl: string;
+
+BeforeAll(async () => {
+  localRestApiUrl = await startLocalRestServer();
+});
+
+AfterAll(async () => {
+  await stopLocalRestServer();
+});
 
 /** Starts the browser, creates the scenario context, and prepares the initial page. */
-Before({ timeout: 30_000 }, async function (this: CustomWorld) {
+Before({ timeout: 30_000 }, async function (this: CustomWorld, scenario) {
+  if (scenario.pickle.tags.some((tag) => tag.name === '@rest-api')) {
+    this.api = await request.newContext({ baseURL: localRestApiUrl });
+    return;
+  }
+
   // Launch browser
   const browserName = process.env.BROWSER?.toLowerCase();
   const isHeadless =

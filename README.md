@@ -32,6 +32,8 @@ cp .env.example .env
 The default configuration targets:
 `https://parabank.parasoft.com/parabank`
 
+The `@rest-api` feature starts an in-memory local Express service automatically, so its scenarios do not require network access to ParaBank.
+
 ## Configuration
 
 | Variable | Default | Purpose |
@@ -60,6 +62,12 @@ Run headed tests:
 
 ```bash
 npm run test:headed
+```
+
+Run the REST and SOAP API scenarios against the local Express service:
+
+```bash
+npm run test:rest-api
 ```
 
 Run a tagged suite:

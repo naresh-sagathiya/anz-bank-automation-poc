@@ -18,6 +18,8 @@ export class LoanLocators {
       .getByRole('button', { name: /apply now/i })
       .or(page.locator('input[type="submit"][value="Apply Now"]'));
     this.loanStatus = page.locator('#loanStatus');
-    this.loanAccountId = page.locator('#accountNumber');
+    this.loanAccountId = page.locator(
+      '#rightPanel a[href*="activity.htm"]'
+    );
   }
 }
